@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Büyülü Defter</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1c1611">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Cinzel:wght@500&family=Patrick+Hand&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --parchment:#EAE0C4; --parchment-dark:#D8C9A3; --ink:#2B1C12; --ink-soft:#4A3626;
+    --gold:#A9793B; --gold-bright:#C99B4A; --green-deep:#3C4A34;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; height:100%; background:#1c1611; }
+  body{
+    display:flex; align-items:center; justify-content:center; padding:24px 12px;
+    font-family:'Cormorant Garamond', serif; min-height:100vh;
+  }
+  .book{
+    position:relative; width:100%; max-width:600px;
+    background: radial-gradient(ellipse at 50% 0%, #F2E8CC 0%, var(--parchment) 55%, var(--parchment-dark) 100%);
+    border-radius:6px;
+    box-shadow: 0 2px 0 var(--parchment-dark), 0 25px 60px -15px rgba(0,0,0,0.7), inset 0 0 90px rgba(90,60,20,0.18);
+    padding: 26px 24px 22px;
+  }
+  .book{ user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
+  #apiKeyInput{ user-select:text; -webkit-user-select:text; }
+
+  .topbar{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+  .eyebrow{ display:flex; align-items:center; gap:8px; font-family:'Cinzel', serif; letter-spacing:0.2em; font-size:11px; color:var(--green-deep); opacity:0.75; }
+  .gear{ width:32px; height:32px; border:1px solid rgba(43,28,18,0.25); border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; background:transparent; color:var(--ink-soft); }
+  .gear svg{ width:16px; height:16px; }
+
+  h1{ font-family:'Cinzel', serif; text-align:center; font-size:21px; font-weight:500; color:var(--ink); margin:6px 0 16px; }
+
+  .settings{ max-height:0; overflow:hidden; transition:max-height .35s ease, opacity .3s ease, margin .3s ease; opacity:0; }
+  .settings.open{ max-height:280px; opacity:1; margin-bottom:16px; }
+  .settings-inner{ border:1px solid rgba(43,28,18,0.2); border-radius:4px; padding:14px; background:rgba(255,255,255,0.25); }
+  .field-label{ font-family:'Cinzel', serif; font-size:9.5px; letter-spacing:0.14em; color:var(--ink-soft); opacity:0.7; margin-bottom:8px; }
+  .providers{ display:flex; gap:8px; margin-bottom:12px; }
+  .prov-btn{ flex:1; font-family:'Cinzel', serif; font-size:10.5px; padding:9px 4px; border:1px solid rgba(43,28,18,0.25); background:transparent; color:var(--ink-soft); border-radius:3px; cursor:pointer; }
+  .prov-btn.active{ background:var(--green-deep); color:#fff; border-color:var(--green-deep); }
+  #apiKeyInput{ width:100%; font-size:14px; padding:9px 10px; border:1px solid rgba(43,28,18,0.25); border-radius:3px; background:#fff; color:var(--ink); outline:none; margin-bottom:6px; }
+  .settings-note{ font-size:11px; color:var(--ink-soft); opacity:0.65; line-height:1.4; }
+  .saved-tag{ font-size:10.5px; color:var(--green-deep); opacity:0; transition:opacity .3s ease; }
+  .saved-tag.show{ opacity:0.8; }
+
+  .toolbar{ display:flex; align-items:center; gap:10px; margin-bottom:8px; flex-wrap:wrap; }
+  .tool-btn{ font-family:'Cinzel', serif; font-size:10px; letter-spacing:0.06em; padding:7px 10px; border:1px solid rgba(43,28,18,0.25); background:transparent; color:var(--ink-soft); border-radius:3px; cursor:pointer; }
+  .tool-btn.active{ background:var(--ink); color:#fff; border-color:var(--ink); }
+  .thickness{ display:flex; align-items:center; gap:6px; font-size:10px; color:var(--ink-soft); font-family:'Cinzel',serif; }
+  .thickness input{ width:70px; }
+
+  .canvas-wrap{ position:relative; border-bottom:1px solid rgba(43,28,18,0.25); transition:opacity .9s ease, filter .9s ease; min-height:220px; }
+  #padCanvas{ width:100%; height:220px; touch-action:none; cursor:crosshair; display:block; }
+  .canvas-placeholder{ position:absolute; top:12px; left:4px; font-style:italic; font-size:16px; color:var(--ink-soft); opacity:0.35; pointer-events:none; }
+
+  .row{ display:flex; justify-content:space-between; align-items:center; margin-top:14px; }
+  .left-actions{ display:flex; gap:14px; }
+  .link-btn{ font-family:'Cinzel', serif; font-size:10.5px; letter-spacing:0.1em; background:none; border:none; color:var(--ink-soft); opacity:0.6; cursor:pointer; text-decoration:underline; padding:0; }
+  #sendBtn{ font-family:'Cinzel', serif; font-size:12px; letter-spacing:0.14em; background:transparent; border:1px solid var(--gold); color:var(--green-deep); padding:10px 22px; border-radius:2px; cursor:pointer; }
+  #sendBtn:disabled{ opacity:0.4; cursor:default; }
+
+  /* cevap, yazdığımız alanın üzerinde belirir */
+  .reply-layer{ position:absolute; inset:0; padding:10px 4px; pointer-events:none; }
+  .thinking{ display:flex; align-items:center; gap:10px; font-family:'Cinzel', serif; font-size:11px; letter-spacing:0.14em; color:var(--gold); opacity:0; transition:opacity .4s ease; }
+  .thinking.show{ opacity:0.85; }
+  .thinking .dot{ width:5px; height:5px; border-radius:50%; background:var(--gold); animation:pulse 1.2s ease-in-out infinite; }
+  .thinking .dot:nth-child(2){ animation-delay:.15s; } .thinking .dot:nth-child(3){ animation-delay:.3s; }
+  @keyframes pulse{ 0%,100%{opacity:.25;transform:scale(.85);} 50%{opacity:1;transform:scale(1.1);} }
+
+  #responseText{ font-family:'Patrick Hand', cursive; font-style:normal; font-size:23px; line-height:1.55; color:var(--ink); }
+  #responseText .rchar{ opacity:0; filter:blur(3px); display:inline-block; animation:inkAppear .55s forwards ease-out; }
+  @keyframes inkAppear{ 0%{opacity:0;filter:blur(3px);transform:translateY(2px);text-shadow:0 0 8px var(--gold-bright);} 60%{text-shadow:0 0 6px var(--gold-bright);} 100%{opacity:1;filter:blur(0);transform:translateY(0);text-shadow:none;} }
+
+  .hint{ text-align:center; font-family:'Cinzel', serif; font-size:9px; letter-spacing:0.1em; color:var(--ink-soft); opacity:0.4; margin-top:18px; }
+</style>
+</head>
+<body>
+  <div class="book">
+    <div class="topbar">
+      <div class="eyebrow">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" style="width:14px;height:14px;"><path d="M4 19c4-1 6-4 6-9V5c-3 0-6 2-6 6z"/><path d="M20 19c-4-1-6-4-6-9V5c3 0 6 2 6 6z"/></svg>
+        Büyülü Defter
+      </div>
+      <button class="gear" id="gearBtn" title="Ayarlar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 0 1-4 0v-.09A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3a2 2 0 0 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 0 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1z"/></svg>
+      </button>
+    </div>
+
+    <h1>Aklından geçeni yaz</h1>
+
+    <div class="settings" id="settingsPanel">
+      <div class="settings-inner">
+        <div class="field-label">HANGİ AI</div>
+        <div class="providers">
+          <button class="prov-btn" data-provider="claude">Claude</button>
+          <button class="prov-btn" data-provider="openai">ChatGPT</button>
+          <button class="prov-btn" data-provider="gemini">Gemini</button>
+        </div>
+        <div class="field-label">API ANAHTARI</div>
+        <input type="password" id="apiKeyInput" placeholder="kendi API anahtarını yapıştır">
+        <span class="saved-tag" id="savedTag">✓ bu cihaza kaydedildi</span>
+        <div class="settings-note">Anahtar sadece bu cihazın tarayıcısında (localStorage) saklanır. Hiçbir sunucuya gönderilmez, sadece seçtiğin sağlayıcının kendi API'sine gider.</div>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <button class="tool-btn active" id="penTool">✒ kalem</button>
+      <button class="tool-btn" id="eraserTool">⌫ silgi</button>
+      <button class="tool-btn" id="undoTool">↺ geri al</button>
+      <div class="thickness">
+        <span>kalınlık</span>
+        <input type="range" id="thicknessSlider" min="1" max="8" value="2.4" step="0.2">
+      </div>
+    </div>
+
+    <div class="canvas-wrap" id="canvasWrap">
+      <canvas id="padCanvas"></canvas>
+      <div class="canvas-placeholder" id="placeholder">buraya parmağınla ya da kalemle yaz... (yazmayı bitirince 3sn bekle, kendiliğinden gönderilir)</div>
+      <div class="reply-layer">
+        <div class="thinking" id="thinking">
+          <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          <span>defter düşünüyor</span>
+        </div>
+        <div id="responseText"></div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="left-actions">
+        <button class="link-btn" id="clearBtn">temizle</button>
+      </div>
+      <button id="sendBtn">Defteri Uyandır</button>
+    </div>
+
+    <div class="hint" id="hint">seçili: —</div>
+  </div>
+
+<script>
+  // ---------- kalıcı ayar (gerçek localStorage) ----------
+  const STORAGE_KEY = 'buyulu-defter-settings';
+  function loadSettings(){
+    try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)) || { provider:'claude', keys:{} }; }
+    catch(e){ return { provider:'claude', keys:{} }; }
+  }
+  function saveSettings(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  const state = loadSettings();
+
+  const gearBtn = document.getElementById('gearBtn');
+  const settingsPanel = document.getElementById('settingsPanel');
+  const apiKeyInput = document.getElementById('apiKeyInput');
+  const savedTag = document.getElementById('savedTag');
+  const hint = document.getElementById('hint');
+  const names = { claude:'Claude', openai:'ChatGPT', gemini:'Gemini' };
+
+  function refreshProviderUI(){
+    document.querySelectorAll('.prov-btn').forEach(b => b.classList.toggle('active', b.dataset.provider === state.provider));
+    apiKeyInput.value = state.keys[state.provider] || '';
+    hint.textContent = 'seçili: ' + (names[state.provider] || '—');
+  }
+  refreshProviderUI();
+
+  gearBtn.addEventListener('click', () => settingsPanel.classList.toggle('open'));
+  document.querySelectorAll('.prov-btn').forEach(btn => {
+    btn.addEventListener('click', () => { state.provider = btn.dataset.provider; saveSettings(); refreshProviderUI(); });
+  });
+  let saveTimer;
+  apiKeyInput.addEventListener('input', () => {
+    state.keys[state.provider] = apiKeyInput.value; saveSettings();
+    savedTag.classList.add('show');
+    clearTimeout(saveTimer); saveTimer = setTimeout(() => savedTag.classList.remove('show'), 1500);
+  });
+
+  // ---------- canvas + araçlar ----------
+  const canvas = document.getElementById('padCanvas');
+  const ctx = canvas.getContext('2d');
+  const placeholder = document.getElementById('placeholder');
+  const canvasWrap = document.getElementById('canvasWrap');
+  const penTool = document.getElementById('penTool');
+  const eraserTool = document.getElementById('eraserTool');
+  const undoTool = document.getElementById('undoTool');
+  const thicknessSlider = document.getElementById('thicknessSlider');
+
+  let drawing = false, hasContent = false, mode = 'pen';
+  let strokes = []; // her stroke: {points:[{x,y}], mode, width}
+  let currentStroke = null;
+
+  function resizeCanvas(){
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = rect.width * dpr; canvas.height = rect.height * dpr;
+    ctx.setTransform(1,0,0,1,0,0); ctx.scale(dpr, dpr);
+    redraw();
+  }
+  window.addEventListener('resize', resizeCanvas);
+
+  function redraw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    strokes.forEach(s => {
+      ctx.globalCompositeOperation = s.mode === 'eraser' ? 'destination-out' : 'source-over';
+      ctx.lineCap='round'; ctx.lineJoin='round';
+      ctx.strokeStyle = '#2B1C12'; ctx.lineWidth = s.width;
+      ctx.beginPath();
+      s.points.forEach((p,i) => i===0 ? ctx.moveTo(p.x,p.y) : ctx.lineTo(p.x,p.y));
+      ctx.stroke();
+    });
+    ctx.globalCompositeOperation = 'source-over';
+    hasContent = strokes.length > 0;
+    placeholder.style.display = hasContent ? 'none' : 'block';
+  }
+
+  function pos(e){ const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+
+  // ---------- 3 saniye hareketsizlik -> otomatik gönder ----------
+  let inactivityTimer = null;
+  function cancelAutoSend(){ clearTimeout(inactivityTimer); }
+  function scheduleAutoSend(){
+    clearTimeout(inactivityTimer);
+    if(!hasContent || sendBtn.disabled) return;
+    inactivityTimer = setTimeout(() => {
+      if(hasContent && !sendBtn.disabled) sendBtn.click();
+    }, 3000);
+  }
+
+  canvas.addEventListener('pointerdown', e => {
+    cancelAutoSend();
+    // yeni yazmaya başlarken ekrandaki eski cevabı temizle
+    if(responseText.innerHTML){ responseText.innerHTML = ''; }
+    thinking.classList.remove('show');
+
+    drawing = true;
+    const w = mode === 'eraser' ? parseFloat(thicknessSlider.value) * 4 : parseFloat(thicknessSlider.value);
+    currentStroke = { points:[pos(e)], mode, width:w };
+    strokes.push(currentStroke);
+  });
+  canvas.addEventListener('pointermove', e => {
+    if(!drawing) return;
+    currentStroke.points.push(pos(e));
+    redraw();
+  });
+  window.addEventListener('pointerup', () => { if(drawing){ drawing = false; scheduleAutoSend(); } });
+
+  penTool.addEventListener('click', () => { mode='pen'; penTool.classList.add('active'); eraserTool.classList.remove('active'); });
+  eraserTool.addEventListener('click', () => { mode='eraser'; eraserTool.classList.add('active'); penTool.classList.remove('active'); });
+  undoTool.addEventListener('click', () => { cancelAutoSend(); strokes.pop(); redraw(); });
+  document.getElementById('clearBtn').addEventListener('click', () => { cancelAutoSend(); strokes = []; redraw(); });
+
+  resizeCanvas();
+
+  // ---------- provider adapterleri ----------
+  async function callClaude(base64Png, prompt, apiKey){
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method:"POST",
+      headers:{ "Content-Type":"application/json", "x-api-key": apiKey, "anthropic-version":"2023-06-01", "anthropic-dangerous-direct-browser-access":"true" },
+      body: JSON.stringify({
+        model:"claude-sonnet-4-6", max_tokens:300,
+        system:"Kullanıcı bir not defterine el yazısıyla bir soru veya not yazdı. Görseldeki yazıyı oku ve net, kısa (2-4 cümle), günlük bir dille yardımcı bir cevap ver. Şiirsel, aşırı süslü veya soyut bir üslup kullanma; normal bir asistan gibi doğrudan cevap ver.",
+        messages:[{ role:"user", content:[
+          { type:"image", source:{ type:"base64", media_type:"image/png", data: base64Png } },
+          { type:"text", text: prompt }
+        ]}]
+      })
+    });
+    const data = await res.json();
+    if(data.error) throw new Error(data.error.message);
+    return data.content.map(b => b.text || "").join("").trim();
+  }
+  // Cloudflare Worker'ını deploy ettikten sonra buraya kendi worker adresini yaz.
+  // Örnek: "https://buyulu-defter-proxy.SENIN-KULLANICI-ADIN.workers.dev"
+  const OPENAI_PROXY_URL = "https://buyulu-defter-proxy.ORNEK-ADRES.workers.dev";
+
+  async function callOpenAI(base64Png, prompt, apiKey){
+    const res = await fetch(OPENAI_PROXY_URL, {
+      method:"POST", headers:{ "Content-Type":"application/json", "Authorization":"Bearer " + apiKey },
+      body: JSON.stringify({
+        model:"gpt-4o-mini", max_tokens:300,
+        messages:[
+          { role:"system", content:"Kullanıcı bir not defterine el yazısıyla bir soru veya not yazdı. Görseldeki yazıyı oku ve net, kısa (2-4 cümle), günlük bir dille yardımcı bir cevap ver. Şiirsel, aşırı süslü veya soyut bir üslup kullanma; normal bir asistan gibi doğrudan cevap ver." },
+          { role:"user", content:[ { type:"text", text: prompt }, { type:"image_url", image_url:{ url:"data:image/png;base64,"+base64Png } } ] }
+        ]
+      })
+    });
+    const data = await res.json();
+    if(data.error) throw new Error(data.error.message);
+    return data.choices[0].message.content.trim();
+  }
+  async function callGemini(base64Png, prompt, apiKey){
+    const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key="+apiKey, {
+      method:"POST", headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ contents:[{ parts:[
+        { text:"Kullanıcı bir not defterine el yazısıyla bir soru veya not yazdı. Görseldeki yazıyı oku ve net, kısa (2-4 cümle), günlük bir dille yardımcı bir cevap ver. Şiirsel, aşırı süslü veya soyut bir üslup kullanma; normal bir asistan gibi doğrudan cevap ver. " + prompt },
+        { inline_data:{ mime_type:"image/png", data: base64Png } }
+      ]}]})
+    });
+    const data = await res.json();
+    if(data.error) throw new Error(data.error.message);
+    return data.candidates[0].content.parts[0].text.trim();
+  }
+
+  // ---------- gönder akışı ----------
+  const sendBtn = document.getElementById('sendBtn');
+  const thinking = document.getElementById('thinking');
+  const responseText = document.getElementById('responseText');
+
+  function fadeOutCanvas(){
+    return new Promise(resolve => {
+      canvasWrap.style.filter = 'blur(6px)'; canvasWrap.style.opacity = '0';
+      setTimeout(() => {
+        strokes = []; redraw();
+        canvasWrap.style.filter=''; canvasWrap.style.opacity='1';
+        resolve();
+      }, 900);
+    });
+  }
+  function typeInResponse(text){
+    responseText.innerHTML = '';
+    text.split('').forEach((ch,i) => {
+      const span = document.createElement('span');
+      span.className='rchar'; span.textContent = ch===' ' ? '\u00A0' : ch;
+      span.style.animationDelay = (i*0.016)+'s';
+      responseText.appendChild(span);
+    });
+  }
+
+  sendBtn.addEventListener('click', async () => {
+    if(!hasContent) return;
+    cancelAutoSend();
+    const apiKey = state.keys[state.provider];
+    if(!apiKey){ typeInResponse('Önce ⚙️ ayarlardan API anahtarını gir.'); return; }
+
+    sendBtn.disabled = true; responseText.innerHTML = '';
+    const base64Png = canvas.toDataURL('image/png').split(',')[1];
+    await fadeOutCanvas();
+    thinking.classList.add('show');
+
+    const prompt = "Yukarıdaki görselde el yazısıyla yazılmış bir not/soru var. Onu oku ve cevapla.";
+    try{
+      let answer;
+      if(state.provider==='claude') answer = await callClaude(base64Png, prompt, apiKey);
+      else if(state.provider==='openai') answer = await callOpenAI(base64Png, prompt, apiKey);
+      else answer = await callGemini(base64Png, prompt, apiKey);
+      thinking.classList.remove('show');
+      typeInResponse(answer || 'Defter sessiz kaldı...');
+    }catch(e){
+      thinking.classList.remove('show');
+      typeInResponse(e.message || 'Defter şu an uyanamıyor, bağlantı büyüsü bozulmuş olabilir.');
+    }
+    sendBtn.disabled = false;
+  });
+
+  // ---------- service worker (offline app-shell) ----------
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(()=>{}); });
+  }
+</script>
+</body>
+</html>
